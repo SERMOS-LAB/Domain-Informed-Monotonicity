@@ -1,0 +1,187 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
+import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Input
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
+# Set random seeds for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# Load the dataset
+file_path = './alldata_downtownTodowntown.csv'
+data = pd.read_csv(file_path)
+data = data.dropna()
+
+X = data.drop(columns=['total_number_trips', 'Unnamed: 0'])
+y = data['total_number_trips'] / 101
+
+# The monotonic features and their indices
+monotonic_features = ['downtown_downtown', 'EmpDen_Des', 'EmpDen_Ori', 'Commuters_HW', 'Commuters_WH']
+monotonic_indices = [X.columns.get_loc(col) for col in monotonic_features]
+
+# Split into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize features and target
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)   # shape: (n_train, n_features)
+X_test_scaled = scaler.transform(X_test)
+
+target_scaler = StandardScaler()
+y_train_scaled = target_scaler.fit_transform(y_train.values.reshape(-1, 1)).flatten()
+y_test_scaled = target_scaler.transform(y_test.values.reshape(-1, 1)).flatten()
+
+# -----------------------------------------------------------------------------
+# New Combined Monotonicity Regularization Function (unchanged)
+# -----------------------------------------------------------------------------
+def monotonicity_regularization(y_pred, X, monotonic_indices):
+    """
+    For each monotonic feature j:
+      1. Compute baseline linear regression parameters a, b from unsorted data:
+         a = Cov(x_j, f) / Var(x_j), b = mean(f) - a * mean(x_j).
+      2. Sort the predictions f in ascending order and obtain the corresponding 
+         sorted x-values based on the predictions.
+      3. Compute the baseline values on these sorted x-values: f_lin = a*x_sorted + b.
+      4. For each adjacent pair, compute the expected difference Δf_lin and actual 
+         difference Δf. The violation is v = max{0, Δf_lin - Δf}.
+      5. The penalty for feature j is the sum of squared violations over adjacent pairs.
+      6. The overall regularization is the sum over features, normalized by batch size.
+    """
+    eps = 1e-6
+    total_penalty = 0.0
+    # Ensure y_pred is a 1D tensor and get current batch size
+    y_pred = tf.reshape(y_pred, [-1])
+    current_batch_size = tf.shape(y_pred)[0]
+    
+    # Ensure X is a tensor and slice it to current batch size if needed
+    if not isinstance(X, tf.Tensor):
+        X = tf.convert_to_tensor(X, dtype=tf.float32)
+    X = tf.slice(X, [0, 0], [current_batch_size, tf.shape(X)[1]])
+    
+    for idx in monotonic_indices:
+        # Compute baseline parameters using unsorted data
+        x_unsorted = tf.cast(X[:, idx], tf.float32)
+        mean_x = tf.reduce_mean(x_unsorted)
+        mean_y = tf.reduce_mean(y_pred)
+        cov = tf.reduce_mean(x_unsorted * y_pred) - mean_x * mean_y
+        var = tf.reduce_mean(tf.square(x_unsorted)) - tf.square(mean_x) + eps
+        a = cov / var
+        b = mean_y - a * mean_x
+        
+        # Now sort the predictions (and obtain corresponding x values) based on y_pred
+        sorted_idx = tf.argsort(y_pred)
+        y_sorted = tf.gather(y_pred, sorted_idx)
+        x_sorted = tf.gather(x_unsorted, sorted_idx)
+        
+        # Compute baseline predictions on the sorted x values
+        y_lin = a * x_sorted + b
+        
+        # Compute adjacent differences for sorted predictions and baseline
+        diff_y = y_sorted[1:] - y_sorted[:-1]
+        diff_y_lin = y_lin[1:] - y_lin[:-1]
+        
+        # Violation: if actual difference is less than the baseline difference
+        violation = tf.maximum(0.0, diff_y_lin - diff_y)
+        penalty = tf.reduce_sum(tf.square(violation))
+        
+        total_penalty += penalty
+
+    return total_penalty / tf.cast(current_batch_size, tf.float32)
+
+# -----------------------------------------------------------------------------
+# Objective Function: (MSE + λ * monotonicity regularization term) (unchanged)
+# -----------------------------------------------------------------------------
+def custom_loss(lam, monotonic_indices):
+    def loss(y_true, y_pred):
+        mse = tf.keras.losses.mean_squared_error(y_true, y_pred)
+        reg = monotonicity_regularization(y_pred, X_train_scaled, monotonic_indices)
+        return mse + lam * reg
+    return loss
+
+# -----------------------------------------------------------------------------
+# ANN Model (Do not change the neural network architecture)
+# -----------------------------------------------------------------------------
+def create_model(input_shape, monotonic_indices, lam, learning_rate):
+    inputs = Input(shape=(input_shape,))
+    x = Dense(128, activation='relu')(inputs)
+    outputs = Dense(1)(x)
+    model = Model(inputs=inputs, outputs=outputs)
+    model.compile(optimizer=Adam(learning_rate=learning_rate),
+                  loss=custom_loss(lam, monotonic_indices))
+    return model
+
+# -----------------------------------------------------------------------------
+# Modified Train and Evaluate Function with Additional Metrics (MAE and MAPE)
+# -----------------------------------------------------------------------------
+def train_and_evaluate(monotonic_indices, lam, batch_size, learning_rate, epochs):
+    model = create_model(X_train_scaled.shape[1], monotonic_indices, lam, learning_rate)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=50, restore_best_weights=True)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=20, min_lr=0.0001)
+    
+    history = model.fit(X_train_scaled, y_train_scaled,
+                        validation_data=(X_test_scaled, y_test_scaled),
+                        epochs=epochs, batch_size=batch_size,
+                        callbacks=[early_stopping, reduce_lr], verbose=0)
+    
+    predictions_scaled = model.predict(X_test_scaled)
+    predictions = target_scaler.inverse_transform(predictions_scaled)
+    
+    mse = mean_squared_error(y_test, predictions)
+    mae = mean_absolute_error(y_test, predictions)
+    mape = mean_absolute_percentage_error(y_test, predictions)
+    
+    return mse, mae, mape, model, predictions
+
+# -----------------------------------------------------------------------------
+# Training and Evaluating Models for Various Lambda Values
+# -----------------------------------------------------------------------------
+# Train base model (λ = 0)
+base_mse, base_mae, base_mape, base_model, base_predictions = train_and_evaluate([], 0, batch_size=32, learning_rate=0.001, epochs=500)
+
+# Lambda hyperparameter values
+lam_values = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+multi_feature_results = []
+single_feature_results = {feature: [] for feature in monotonic_features}
+
+for lam in lam_values:
+    if lam == 0:
+        multi_mse = base_mse
+        multi_mae = base_mae
+        multi_mape = base_mape
+        multi_predictions = base_predictions
+    else:
+        multi_mse, multi_mae, multi_mape, multi_model, multi_predictions = train_and_evaluate(monotonic_indices, lam, batch_size=32, learning_rate=0.001, epochs=500)
+    
+    multi_feature_results.append({'lam': lam, 'mse': multi_mse, 'mae': multi_mae, 'mape': multi_mape})
+    
+    for feature in monotonic_features:
+        single_index = [X.columns.get_loc(feature)]
+        if lam == 0:
+            single_mse = base_mse
+            single_mae = base_mae
+            single_mape = base_mape
+        else:
+            single_mse, single_mae, single_mape, _, _ = train_and_evaluate(single_index, lam, batch_size=32, learning_rate=0.001, epochs=500)
+        single_feature_results[feature].append({'lam': lam, 'mse': single_mse, 'mae': single_mae, 'mape': single_mape})
+    
+    print(f"Lambda: {lam}")
+    print(f"Multi-Feature MSE: {multi_mse}, MAE: {multi_mae}, MAPE: {multi_mape}")
+    for feature in monotonic_features:
+        res = single_feature_results[feature][-1]
+        print(f"{feature} Single-Feature MSE: {res['mse']}, MAE: {res['mae']}, MAPE: {res['mape']}")
+    print()
+
+# -----------------------------------------------------------------------------
+# Displaying Results
+# -----------------------------------------------------------------------------
+print("Multi-Feature Results:")
+print(pd.DataFrame(multi_feature_results))
+for feature in monotonic_features:
+    print(f"\n{feature} Single-Feature Results:")
+    print(pd.DataFrame(single_feature_results[feature]))
