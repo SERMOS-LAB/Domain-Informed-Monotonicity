@@ -2,13 +2,13 @@
 DIM: Enforcing Domain-Informed Monotonicity in Deep Neural Networks
 
 # Overview
-This repository contains the implementation and experimental code for the paper "DIM: Enforcing Domain-Informed Monotonicity in Deep Neural Networks". DIM is a novel regularization method that maintains domain-informed monotonic relationships in deep learning models to improve predictions and reduce overfitting.
+This repository contains the implementation and experimental code for the paper "DIM: Enforcing Domain-Informed Monotonicity in Deep Neural Networks". DIM is a new regularization method that maintains domain-informed monotonic relationships in deep learning models to improve predictions and reduce overfitting.
 
 # Key Features
-Model-Agnostic: Works with any neural network architecture without requiring structural modifications
-Domain-Informed: Incorporates expert knowledge about monotonic relationships between features and outputs
-Linear Baseline Reference: Establishes objective violation measurement through fitted linear trends
-Consistent Performance: Demonstrates MSE improvements of 20-30% across multiple architectures
+1) Model-Agnostic: Works with any neural network architecture without requiring structural modifications
+2) Domain-Informed: Incorporates expert knowledge about monotonic relationships between features and outputs
+3) Linear Baseline Reference: Establishes objective violation measurement through fitted linear trends
+4) Consistent Performance: Demonstrates MSE improvements of 20-30% across multiple architectures
 
 # Method Overview
 DIM addresses the fundamental limitation of existing monotonicity methods by establishing an explicit linear reference trend before measuring violations. For each monotonic feature, the method:
@@ -19,7 +19,6 @@ DIM addresses the fundamental limitation of existing monotonicity methods by est
 5) Integrates penalty into training loss function
 
 # Repository Structure
-
 ```
 ├── README.md
 ├── models/
