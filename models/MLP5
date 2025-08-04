@@ -94,7 +94,7 @@ def monotonicity_regularization(y_pred, X, monotonic_indices):
     return total_penalty / tf.cast(current_batch_size, tf.float32)
 
 
-# Objective Function: (MSE + λ * monotonicity regularization term)
+# Objective Function: MSE + λ * monotonicity regularization term
 def custom_loss(lam, monotonic_indices):
     def loss(y_true, y_pred):
         mse = tf.keras.losses.mean_squared_error(y_true, y_pred)
