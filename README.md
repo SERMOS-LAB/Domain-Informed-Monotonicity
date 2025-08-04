@@ -26,7 +26,8 @@ DIM addresses the fundamental limitation of existing monotonicity methods by est
 │   ├── mlp3_model.py         # 3-layer MLP implementation
 │   └── mlp5_model.py         # 5-layer MLP implementation
 ├── data/
-│   └── alldata_downtownTodowntown.csv  # Chicago ridesourcing dataset
+│   ├── alldata_downtownTodowntown.csv  # Chicago ridesourcing dataset
+│   └── synthetic_monotonic_trips.csv # Synthetic data generation
 
 # Installation
 Python 3.8 or higher
