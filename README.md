@@ -18,16 +18,17 @@ DIM addresses the fundamental limitation of existing monotonicity methods by est
 4) Applies squared penalty for violations
 5) Integrates penalty into training loss function
 
-# Repository Structure
+```
 ├── README.md
 ├── models/
-│   ├── ann_model.py          # Single-layer ANN implementation
-│   ├── cnn_model.py          # Conv1D model implementation
-│   ├── mlp3_model.py         # 3-layer MLP implementation
-│   └── mlp5_model.py         # 5-layer MLP implementation
+│   ├── ann_model.py              # Single-layer ANN implementation
+│   ├── cnn_model.py              # Conv1D model implementation
+│   ├── mlp3_model.py             # 3-layer MLP implementation
+│   └── mlp5_model.py             # 5-layer MLP implementation
 ├── data/
-│   ├── alldata_downtownTodowntown.csv  # Chicago ridesourcing dataset
-│   └── synthetic_monotonic_trips.csv # Synthetic data generation
+│   ├── alldata_downtownTodowntown.csv     # Chicago ridesourcing dataset
+│   └── synthetic_monotonic_trips.csv      # Synthetic data generation
+```
 
 # Installation
 Python 3.8 or higher
