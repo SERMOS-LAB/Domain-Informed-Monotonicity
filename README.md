@@ -18,6 +18,8 @@ DIM addresses the fundamental limitation of existing monotonicity methods by est
 4) Applies squared penalty for violations
 5) Integrates penalty into training loss function
 
+# Repository Structure
+
 ```
 ├── README.md
 ├── models/
@@ -34,3 +36,31 @@ DIM addresses the fundamental limitation of existing monotonicity methods by est
 Python 3.8 or higher
 TensorFlow 2.7.0
 CUDA-capable GPU (recommended for faster training)
+
+# Dataset Configuration
+
+By default, all models are configured to use the Chicago ridesourcing dataset. To run experiments on the synthetic dataset, you need to modify the `file_path` variable in each model file.
+
+# Switching to Synthetic Dataset
+
+In each model file (`ann_model.py`, `cnn_model.py`, `mlp3_model.py`, `mlp5_model.py`), change the file path:
+
+```python
+# Change this line:
+file_path = './alldata_downtownTodowntown.csv'
+
+# To this:
+file_path = './synthetic_monotonic_trips.csv'
+
+```
+# Dataset-Specific Monotonic Features
+## Chicago Dataset:
+```python
+monotonic_features = ['downtown_downtown', 'EmpDen_Des', 'EmpDen_Ori', 'Commuters_HW', 'Commuters_WH']
+```
+## Synthetic Dataset:
+```python
+monotonic_features = ['x1', 'x2', 'x3']  # Adjust based on your synthetic data structure
+```
+Make sure to update the monotonic_features list accordingly when switching between datasets.
+
