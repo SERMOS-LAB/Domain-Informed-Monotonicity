@@ -64,3 +64,13 @@ monotonic_features = ['x1', 'x2', 'x3']  # Adjust based on your synthetic data s
 ```
 Make sure to update the monotonic_features list accordingly when switching between datasets.
 
+# Dropped Columns
+## Chicago Dataset:
+```python
+X = data.drop(columns=['total_number_trips', 'Unnamed: 0'])
+```
+## Synthetic Dataset:
+```python
+X = data.drop(columns=['total_number_trips'])
+```
+Make sure to update the dropped columns accordingly when switching between datasets.
