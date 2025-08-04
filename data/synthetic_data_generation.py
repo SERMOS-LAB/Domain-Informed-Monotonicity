@@ -1,28 +1,23 @@
 import numpy as np
 import pandas as pd
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 1) Configuration
+# Configuration
 np.random.seed(42)
 n_samples = 5000
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 2) Sample predictors uniformly (no ordering in x’s themselves)
+# Sample predictors uniformly (no ordering in x’s themselves)
 x1 = np.random.uniform(0, 200, size=n_samples)
 x2 = np.random.uniform(0, 50, size=n_samples)
 x3 = np.random.uniform(0, 150, size=n_samples)
 x4 = np.random.uniform(0, 100, size=n_samples)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 3) Define clean transforms
+# Define clean transforms
 f1 = 0.5  * x1
 f2 = 1.2  * np.sqrt(x2)
 f3 = 2.0  * np.log1p(x3)
 f4 = -0.8 * x4
 
-# ──────────────────────────────────────────────────────────────────────────────
-#4) Inject piecewise constant “bumps” in each monotonic feature
-
+#4) Add piecewise constant bumps in each monotonic feature
 def piecewise_offsets(x, n_bins=20, scale=50):
     """
     Bin x into n_bins uniform-width bins (no edge bins overflow),
@@ -38,8 +33,7 @@ off1 = piecewise_offsets(x1, n_bins=20, scale=50)
 off2 = piecewise_offsets(x2, n_bins=20, scale=30)
 off3 = piecewise_offsets(x3, n_bins=20, scale=20)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 5) Build noisy target
+# Build noisy target
 noise = np.random.normal(0, 10, size=n_samples)
 
 total_number_trips = (
@@ -48,8 +42,7 @@ total_number_trips = (
     + noise              # random noise
 )
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 6) Assemble & save
+# Create & save the synthetic data 
 df_synth = pd.DataFrame({
     'x1': x1,
     'x2': x2,
@@ -59,8 +52,7 @@ df_synth = pd.DataFrame({
 })
 df_synth.to_csv('synthetic_monotonic_trips_new.csv', index=False)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 7) Sanity check
+# Check
 print(df_synth.head())
 print("\nCorrelations with total_number_trips:")
 print(df_synth.corr()['total_number_trips'].drop('total_number_trips'))
