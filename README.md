@@ -31,10 +31,20 @@ DIM addresses the fundamental limitation of existing monotonicity methods by est
 │   └── synthetic_monotonic_trips.csv      # Synthetic data generation
 ```
 
-# Installation
+# Installation and Environment
 Python 3.8 or higher
 TensorFlow 2.7.0
 CUDA-capable GPU (recommended for faster training)
+
+## TensorFlow Conda Environment
+
+```bash
+# Create the environment with TensorFlow 2.7.0
+conda create -n tf270 python=3.8 tensorflow=2.7.0
+
+# Activate the environment
+conda activate tf270
+```
 
 # Dataset Configuration
 
